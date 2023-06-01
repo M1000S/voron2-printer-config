@@ -27,12 +27,10 @@ variable_filament: {
         },
         'type' : {
             'ABS' : {
-                'extruder' : 250.0,
-                'z_offset' : 0.01
+                'extruder' : 250.0
             },
             'PETG' : {
-                'extruder' : 230.0,
-                'z_offset' : 0.02
+                'extruder' : 230.0
             }
         }
     }
@@ -49,7 +47,12 @@ gcode:
   {% endfor %}
 
 
-
+#======================
+[gcode_macro DEACTIVATE_TAP_PROBE]
+description: called after probing
+gcode:
+    M104 S0
+    RESPOND MSG="PROBE DEACTIVATED!"
 
 #======================
 [gcode_macro ACTIVATE_TAP_PROBE]
@@ -61,28 +64,19 @@ gcode:
     {% set ACTUAL_TEMP = printer.extruder.temperature %}
     {% set TARGET_TEMP = printer.extruder.target %}
         
-    RESPOND PREFIX="PROBE:" MSG="ACTIVATED!"
+    RESPOND MSG="PROBE ACTIVATED!"
     {% if TARGET_TEMP > PROBE_TEMP or TARGET_TEMP < MIN_TEMP %}
-        RESPOND PREFIX="PROBE:" MSG="Set and wait for probing temperature {PROBE_TEMP}°C"
-        #{ action_respond_info('Extruder temperature target of %.1fC is too high or to low, setting to %.1fC' % (TARGET_TEMP, PROBE_TEMP)) }
+        { action_respond_info('Extruder temperature target of %.1fC is too high or to low, setting to %.1fC' % (TARGET_TEMP, PROBE_TEMP)) }
         #M109 S{ PROBE_TEMP }
         M104 S{ PROBE_TEMP }
         TEMPERATURE_WAIT SENSOR=extruder MINIMUM={ MIN_TEMP } MAXIMUM={ MAX_TEMP } 
     {% else %}
         # Temperature target is already ok, but nozzle may still be too hot/cold.
         {% if ACTUAL_TEMP > MAX_TEMP or ACTUAL_TEMP < MIN_TEMP %}
-            RESPOND PREFIX="PROBE:" MSG="Wait for probing temperature {PROBE_TEMP}°C"
-            #{ action_respond_info('Extruder temperature %.1fC is still too low or high, waiting until temperature between %.1fC and %.1fC' % (ACTUAL_TEMP, MIN_TEMP, MAX_TEMP)) }
+            { action_respond_info('Extruder temperature %.1fC is still too low or high, waiting until temperature between %.1fC and %.1fC' % (ACTUAL_TEMP, MIN_TEMP, MAX_TEMP)) }
             TEMPERATURE_WAIT SENSOR=extruder MINIMUM={ MIN_TEMP } MAXIMUM={ MAX_TEMP } 
         {% endif %}
     {% endif %}
-
-#======================
-[gcode_macro DEACTIVATE_TAP_PROBE]
-description: called after probing
-gcode:
-    M104 S0
-    RESPOND PREFIX="PROBE:" MSG="DEACTIVATED!"
 
 #======================
 [gcode_macro HOME_IF_NOT]
@@ -93,51 +87,51 @@ gcode:
    {% endif%}
 
 #======================
-#[gcode_macro G28_TEST]
-#description: turn of hotend heating after z homing is done
-##rename_existing: G28001
-#gcode:
-#    {% set qgl_active = printer["gcode_macro Voron"].qgl_active %}
-#    # Inform of overwrite active
-#    RESPOND MSG="G28 overwrite"
-#    
-#
-#    # Lift variable scope for loop
-#    {% set ns = namespace(heat_extruder=false) %}
-#    
-#    # if more than G28 in parmaters, then check if z axis shall be homed
-#    {% if params|length > 1 %}
-#        {% for var, value in params.items() %}
-#            #DEBUG# {action_respond_info(var ~ ": " ~ value)}
-#            {% if var|lower == 'z' %}
-#                {% set ns.heat_extruder = true %}
-#            {% endif %}
-#        {% endfor %}    
-#    # Home all axis requested
-#    {% else %}
-#        {% set ns.heat_extruder = true %}
-#    {% endif %}
-#
-#    #DEBUG# RESPOND MSG={ns.heat_extruder}
-#    {% if ns.heat_extruder|lower == 'true' %}
-#        #RESPOND MSG="Z-Axis will be homed: Turn on heating"
-#        #M104 S150
-#        # Heating will be started by activate probe
-#    {% endif %}
-#    G28001 { rawparams }
-#    {% if ns.heat_extruder|lower == 'true' %}
-#        #RESPOND MSG="Z-Axis was homed: Turn off heating"
-#        {% if not qgl_active %}
-#            M104 S0
-#        {% endif %}
-#    {% endif %}
+[gcode_macro G28_TEST]
+description: turn of hotend heating after z homing is done
+#rename_existing: G28001
+gcode:
+    {% set qgl_active = printer["gcode_macro Voron"].qgl_active %}
+    # Inform of overwrite active
+    RESPOND MSG="G28 overwrite"
+    
+
+    # Lift variable scope for loop
+    {% set ns = namespace(heat_extruder=false) %}
+    
+    # if more than G28 in parmaters, then check if z axis shall be homed
+    {% if params|length > 1 %}
+        {% for var, value in params.items() %}
+            #DEBUG# {action_respond_info(var ~ ": " ~ value)}
+            {% if var|lower == 'z' %}
+                {% set ns.heat_extruder = true %}
+            {% endif %}
+        {% endfor %}    
+    # Home all axis requested
+    {% else %}
+        {% set ns.heat_extruder = true %}
+    {% endif %}
+
+    #DEBUG# RESPOND MSG={ns.heat_extruder}
+    {% if ns.heat_extruder|lower == 'true' %}
+        #RESPOND MSG="Z-Axis will be homed: Turn on heating"
+        #M104 S150
+        # Heating will be started by activate probe
+    {% endif %}
+    G28001 { rawparams }
+    {% if ns.heat_extruder|lower == 'true' %}
+        #RESPOND MSG="Z-Axis was homed: Turn off heating"
+        {% if not qgl_active %}
+            M104 S0
+        {% endif %}
+    {% endif %}
 
 #======================
 [gcode_macro QUAD_GANTRY_LEVEL]
 description: set status variable for condidional probe deactivation
 rename_existing: QUAD_GANTRY_LEVEL_BASE
 gcode:
-    #RESPOND MSG="QUAD_BATRY_LEVEL overwrite"
+    RESPOND MSG="QUAD_BATRY_LEVEL overwrite"
   
     SET_GCODE_VARIABLE MACRO=Voron VARIABLE=qgl_active VALUE=True
   
@@ -148,18 +142,34 @@ gcode:
 
 
 #======================
-#[gcode_macro BED_MESH_CALIBRATE]
-#description: turn of hotend heating after bed mesh is done
-#rename_existing: BED_MESH_CALIBRATE_BASE
-#gcode:
-#  {% set print_start = printer["gcode_macro Voron"].print_start_active %}
-#  { action_respond_info('Bed Mesh Calibrate overwrite') }
-#  BED_MESH_CALIBRATE_BASE { rawparams }
-#  {% if not print_start %}
-#    M104 S0
-#  {% endif %}
+[gcode_macro BED_MESH_CALIBRATE]
+description: turn of hotend heating after bed mesh is done
+rename_existing: BED_MESH_CALIBRATE_BASE
+gcode:
+  {% set print_start = printer["gcode_macro Voron"].print_start_active %}
+  { action_respond_info('Bed Mesh Calibrate overwrite') }
+  BED_MESH_CALIBRATE_BASE { rawparams }
+  {% if not print_start %}
+    M104 S0
+  {% endif %}
 
+#======================
+[gcode_macro PARK]
+gcode:
+    {% set th = printer.toolhead %}
+    G0 F7200 X{th.axis_maximum.x//4} Y{th.axis_maximum.y//4} Z30  
 
+#======================
+[gcode_macro PARK_CENTER]
+gcode:
+    {% set th = printer.toolhead %}
+    G0 F7200 X{th.axis_maximum.x//2} Y{th.axis_maximum.y//2} Z{th.axis_maximum.z//2}
+
+#======================
+[gcode_macro PARK_FRONT]
+gcode:
+    {% set th = printer.toolhead %}
+    G0 F7200 X{th.axis_maximum.x//2} Y0 Z{th.axis_maximum.z//2}
 
 #======================
 [gcode_macro G32]
@@ -182,18 +192,18 @@ gcode:
     {% set chambertemp = params.CHAMBER|default(0)|int %}    
 
     SET_GCODE_VARIABLE MACRO=Voron VARIABLE=print_start_active VALUE=True
+
     BED_MESH_CLEAR
     M140 S{bedtemp}                ; Start bed heating
-    _CLEAN_NOZZLE_PRINT_START_1 TEMP={hotendtemp} ; clean nozzle for qgl and bed mesh
+    HOME_IF_NOT                    ; home all axes if not homed
+    CLEAN_NOZZLE_HOT TEMP={hotendtemp}              ; clean nozzle for qgl and bed mesh
     QUAD_GANTRY_LEVEL              ; level gantry
     G28 Z                          ; home z with leveled gantry
     G90                            ; absolute positioning
     G1 Z20 F3000                   ; move nozzle away from bed
     M190 S{bedtemp}                ; Wait for bed temp reached
-    AIRFILTER_ON                   ; turn on aurfilter
     BED_MESH_CALIBRATE             ; Generate bed mesh
-    _CLEAN_NOZZLE_PRINT_START_2 TEMP={hotendtemp}  ; clean nozzle temporary instead of purging?
-    AIRFILTER_AUTO_KA_ON           ; Keep airfilter alive until print end
+    PURGE_CLEAN_NOZZLE_PRINT_START TEMP={hotendtemp}  ; clean nozzle temporary instead of purging?
     M109 S{hotendtemp}             ; Wait for extrusion temp reached
     
     SET_GCODE_VARIABLE MACRO=Voron VARIABLE=print_start_active VALUE=False 
@@ -224,7 +234,6 @@ gcode:
     
     BED_MESH_CLEAR
     RESTORE_GCODE_STATE NAME=STATE_PRINT_END
-    AIRFILTER_AUTO_KA_OFF
 
 #======================
 [gcode_shell_command mcu_flash]
