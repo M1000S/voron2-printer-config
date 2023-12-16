@@ -9,7 +9,7 @@ mv ~/printer_data/config/scripts/mcu_flash/config/klipper/config.make.klipper.rp
 make clean KCONFIG_CONFIG=config.make.klipper.rpi
 make menuconfig KCONFIG_CONFIG=config.make.klipper.rpi
 make KCONFIG_CONFIG=config.make.klipper.rpi
-#sudo /home/pi/klipper/scripts/flash-linux.sh 
+sudo /home/pi/klipper/scripts/flash-linux.sh 
 mv ~/klipper/config.make.klipper.rpi ~/printer_data/config/scripts/mcu_flash/config/klipper/
 
 sudo systemctl start klipper
