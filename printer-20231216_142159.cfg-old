@@ -19,8 +19,7 @@
 [include gcode_macros/stealthburner_led.cfg]
 [include gcode_macros/spoolman.cfg]
 
-#[include mmu/base/*.cfg]
-#[include mmu/optional/mmu_menu.cfg]
+
 ####################################################################
 #  Infrastrucure
 ####################################################################
